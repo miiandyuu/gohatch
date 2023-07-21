@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "919186588035",
+    "project_id": "gohatch",
+    "storage_bucket": "gohatch.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:919186588035:android:57e2d3de5017ca2848b6b6",
+        "android_client_info": {
+          "package_name": "com.gohatch"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "919186588035-jg9i97cjo8nm3f8sa00uicnfo62637c3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gohatch",
+            "certificate_hash": "bd8612d71fc341dc808572960ac390b5c83f50d8"
+          }
+        },
+        {
+          "client_id": "919186588035-pg4rdqsbeg8sf6uqc56mf4n81nt02ljn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCaZLpAyB2Y2imzBuWPmOoRlbIMJHEBpPM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "919186588035-4gm8rm85h32dpmohtjp4pjbe66fsnlcv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
