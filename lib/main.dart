@@ -5,7 +5,7 @@ import 'package:gohatch/util.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-void main() => runApp(HealthApp());
+void main() => runApp(MaterialApp(home: HealthApp()));
 
 class HealthApp extends StatefulWidget {
   @override
@@ -31,39 +31,14 @@ class _HealthAppState extends State<HealthApp> {
   AppState _state = AppState.DATA_NOT_FETCHED;
   int _nofSteps = 0;
 
-  // Define the types to get.
-  // NOTE: These are only the ones supported on Androids new API Health Connect.
-  // Both Android's Google Fit and iOS' HealthKit have more types that we support in the enum list [HealthDataType]
-  // Add more - like AUDIOGRAM, HEADACHE_SEVERE etc. to try them.
-  static final types = dataTypesAndroid;
-  // Or selected types
-  // static final types = [
-  //   HealthDataType.WEIGHT,
-  //   HealthDataType.STEPS,
-  //   HealthDataType.HEIGHT,
-  //   HealthDataType.BLOOD_GLUCOSE,
-  //   HealthDataType.WORKOUT,
-  //   HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
-  //   HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
-  //   // Uncomment these lines on iOS - only available on iOS
-  //   // HealthDataType.AUDIOGRAM
-  // ];
+  static const types = dataTypesAndroid;
 
-  // with coresponsing permissions
-  // READ only
-  // final permissions = types.map((e) => HealthDataAccess.READ).toList();
-  // Or READ and WRITE
   final permissions = types.map((e) => HealthDataAccess.READ_WRITE).toList();
+  // final permissions = types.map((e) => HealthDataAccess.READ).toList();
 
-  // create a HealthFactory for use in the app
-  HealthFactory health = HealthFactory(useHealthConnectIfAvailable: true);
+  HealthFactory health = HealthFactory();
 
   Future authorize() async {
-    // If we are trying to read Step Count, Workout, Sleep or other data that requires
-    // the ACTIVITY_RECOGNITION permission, we need to request the permission first.
-    // This requires a special request authorization call.
-    //
-    // The location permission is requested for Workouts using the Distance information.
     await Permission.activityRecognition.request();
     await Permission.location.request();
 
@@ -71,8 +46,6 @@ class _HealthAppState extends State<HealthApp> {
     bool? hasPermissions =
         await health.hasPermissions(types, permissions: permissions);
 
-    // hasPermissions = false because the hasPermission cannot disclose if WRITE access exists.
-    // Hence, we have to request with WRITE as well.
     hasPermissions = false;
 
     bool authorized = false;
@@ -96,7 +69,7 @@ class _HealthAppState extends State<HealthApp> {
 
     // get data within the last 24 hours
     final now = DateTime.now();
-    final yesterday = now.subtract(Duration(hours: 24));
+    final yesterday = now.subtract(const Duration(hours: 24));
 
     // Clear old data points
     _healthDataList.clear();
@@ -125,14 +98,10 @@ class _HealthAppState extends State<HealthApp> {
   }
 
   /// Add some random health data.
-  Future addData() async {
+  Future addData({required double steps}) async {
     final now = DateTime.now();
-    final earlier = now.subtract(Duration(minutes: 20));
+    final earlier = now.subtract(const Duration(minutes: 20));
 
-    // Add data for supported types
-    // NOTE: These are only the ones supported on Androids new API Health Connect.
-    // Both Android's Google Fit and iOS' HealthKit have more types that we support in the enum list [HealthDataType]
-    // Add more - like AUDIOGRAM, HEADACHE_SEVERE etc. to try them.
     bool success = true;
     success &= await health.writeHealthData(
         1.925, HealthDataType.HEIGHT, earlier, now);
@@ -141,51 +110,13 @@ class _HealthAppState extends State<HealthApp> {
     success &= await health.writeHealthData(
         90, HealthDataType.HEART_RATE, earlier, now);
     success &=
-        await health.writeHealthData(90, HealthDataType.STEPS, earlier, now);
-    success &= await health.writeHealthData(
-        200, HealthDataType.ACTIVE_ENERGY_BURNED, earlier, now);
-    success &= await health.writeHealthData(
-        70, HealthDataType.HEART_RATE, earlier, now);
-    success &= await health.writeHealthData(
-        37, HealthDataType.BODY_TEMPERATURE, earlier, now);
-    success &= await health.writeBloodOxygen(98, earlier, now, flowRate: 1.0);
-    success &= await health.writeHealthData(
-        105, HealthDataType.BLOOD_GLUCOSE, earlier, now);
-    success &=
-        await health.writeHealthData(1.8, HealthDataType.WATER, earlier, now);
+        await health.writeHealthData(steps, HealthDataType.STEPS, earlier, now);
     success &= await health.writeWorkoutData(
         HealthWorkoutActivityType.AMERICAN_FOOTBALL,
-        now.subtract(Duration(minutes: 15)),
+        now.subtract(const Duration(minutes: 15)),
         now,
         totalDistance: 2430,
         totalEnergyBurned: 400);
-    success &= await health.writeBloodPressure(90, 80, earlier, now);
-    success &= await health.writeHealthData(
-        0.0, HealthDataType.SLEEP_REM, earlier, now);
-    success &= await health.writeHealthData(
-        0.0, HealthDataType.SLEEP_ASLEEP, earlier, now);
-    success &= await health.writeHealthData(
-        0.0, HealthDataType.SLEEP_AWAKE, earlier, now);
-    success &= await health.writeHealthData(
-        0.0, HealthDataType.SLEEP_DEEP, earlier, now);
-
-    // Store an Audiogram
-    // Uncomment these on iOS - only available on iOS
-    // const frequencies = [125.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0];
-    // const leftEarSensitivities = [49.0, 54.0, 89.0, 52.0, 77.0, 35.0];
-    // const rightEarSensitivities = [76.0, 66.0, 90.0, 22.0, 85.0, 44.5];
-
-    // success &= await health.writeAudiogram(
-    //   frequencies,
-    //   leftEarSensitivities,
-    //   rightEarSensitivities,
-    //   now,
-    //   now,
-    //   metadata: {
-    //     "HKExternalUUID": "uniqueID",
-    //     "HKDeviceName": "bluetooth headphone",
-    //   },
-    // );
 
     setState(() {
       _state = success ? AppState.DATA_ADDED : AppState.DATA_NOT_ADDED;
@@ -195,7 +126,7 @@ class _HealthAppState extends State<HealthApp> {
   /// Delete some random health data.
   Future deleteData() async {
     final now = DateTime.now();
-    final earlier = now.subtract(Duration(hours: 24));
+    final earlier = now.subtract(const Duration(hours: 24));
 
     bool success = true;
     for (HealthDataType type in types) {
@@ -249,11 +180,11 @@ class _HealthAppState extends State<HealthApp> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
         Container(
-            padding: EdgeInsets.all(20),
-            child: CircularProgressIndicator(
+            padding: const EdgeInsets.all(20),
+            child: const CircularProgressIndicator(
               strokeWidth: 10,
             )),
-        Text('Fetching data...')
+        const Text('Fetching data...')
       ],
     );
   }
@@ -288,36 +219,36 @@ class _HealthAppState extends State<HealthApp> {
   }
 
   Widget _contentNoData() {
-    return Text('No Data to show');
+    return const Text('No Data to show');
   }
 
   Widget _contentNotFetched() {
-    return Column(
+    return const Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text('Press the download button to fetch data.'),
         Text('Press the plus button to insert some random data.'),
         Text('Press the walking button to get total step count.'),
       ],
-      mainAxisAlignment: MainAxisAlignment.center,
     );
   }
 
   Widget _authorized() {
-    return Text('Authorization granted!');
+    return const Text('Authorization granted!');
   }
 
   Widget _authorizationNotGranted() {
-    return Text('Authorization not given. '
+    return const Text('Authorization not given. '
         'For Android please check your OAUTH2 client ID is correct in Google Developer Console. '
         'For iOS check your permissions in Apple Health.');
   }
 
   Widget _dataAdded() {
-    return Text('Data points inserted successfully!');
+    return const Text('Data points inserted successfully!');
   }
 
   Widget _dataDeleted() {
-    return Text('Data points deleted successfully!');
+    return const Text('Data points deleted successfully!');
   }
 
   Widget _stepsFetched() {
@@ -325,11 +256,11 @@ class _HealthAppState extends State<HealthApp> {
   }
 
   Widget _dataNotAdded() {
-    return Text('Failed to add data');
+    return const Text('Failed to add data');
   }
 
   Widget _dataNotDeleted() {
-    return Text('Failed to delete data');
+    return const Text('Failed to delete data');
   }
 
   Widget _content() {
@@ -359,65 +290,83 @@ class _HealthAppState extends State<HealthApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Health Example'),
-        ),
-        body: Container(
-          child: Column(
-            children: [
-              Wrap(
-                spacing: 10,
-                children: [
-                  TextButton(
-                      onPressed: authorize,
-                      child:
-                          Text("Auth", style: TextStyle(color: Colors.white)),
-                      style: ButtonStyle(
-                          backgroundColor:
-                              MaterialStatePropertyAll(Colors.blue))),
-                  TextButton(
-                      onPressed: fetchData,
-                      child: Text("Fetch Data",
-                          style: TextStyle(color: Colors.white)),
-                      style: ButtonStyle(
-                          backgroundColor:
-                              MaterialStatePropertyAll(Colors.blue))),
-                  TextButton(
-                      onPressed: addData,
-                      child: Text("Add Data",
-                          style: TextStyle(color: Colors.white)),
-                      style: ButtonStyle(
-                          backgroundColor:
-                              MaterialStatePropertyAll(Colors.blue))),
-                  TextButton(
-                      onPressed: deleteData,
-                      child: Text("Delete Data",
-                          style: TextStyle(color: Colors.white)),
-                      style: ButtonStyle(
-                          backgroundColor:
-                              MaterialStatePropertyAll(Colors.blue))),
-                  TextButton(
-                      onPressed: fetchStepData,
-                      child: Text("Fetch Step Data",
-                          style: TextStyle(color: Colors.white)),
-                      style: ButtonStyle(
-                          backgroundColor:
-                              MaterialStatePropertyAll(Colors.blue))),
-                  TextButton(
-                      onPressed: revokeAccess,
-                      child: Text("Revoke Access",
-                          style: TextStyle(color: Colors.white)),
-                      style: ButtonStyle(
-                          backgroundColor:
-                              MaterialStatePropertyAll(Colors.blue))),
-                ],
-              ),
-              Divider(thickness: 3),
-              Expanded(child: Center(child: _content()))
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Health Example'),
+      ),
+      body: Container(
+        child: Column(
+          children: [
+            Wrap(
+              spacing: 10,
+              children: [
+                TextButton(
+                    onPressed: authorize,
+                    style: const ButtonStyle(
+                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                    child: const Text("Auth",
+                        style: TextStyle(color: Colors.white))),
+                TextButton(
+                    onPressed: fetchData,
+                    style: const ButtonStyle(
+                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                    child: const Text("Fetch Data",
+                        style: TextStyle(color: Colors.white))),
+                TextButton(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (context) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.egg),
+                                title: const Text("2KM"),
+                                onTap: () => addData(steps: 2),
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.egg_outlined),
+                                title: const Text("5KM"),
+                                onTap: () => addData(steps: 5),
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.egg_alt),
+                                title: const Text("7KM"),
+                                onTap: () => addData(steps: 7),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    style: const ButtonStyle(
+                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                    child: const Text("Add Data",
+                        style: TextStyle(color: Colors.white))),
+                TextButton(
+                    onPressed: deleteData,
+                    style: const ButtonStyle(
+                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                    child: const Text("Delete Data",
+                        style: TextStyle(color: Colors.white))),
+                TextButton(
+                    onPressed: fetchStepData,
+                    style: const ButtonStyle(
+                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                    child: const Text("Fetch Step Data",
+                        style: TextStyle(color: Colors.white))),
+                TextButton(
+                    onPressed: revokeAccess,
+                    style: const ButtonStyle(
+                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                    child: const Text("Revoke Access",
+                        style: TextStyle(color: Colors.white))),
+              ],
+            ),
+            const Divider(thickness: 3),
+            Expanded(child: Center(child: _content()))
+          ],
         ),
       ),
     );
