@@ -1,0 +1,1 @@
+export 'package:gohatch/presentation/home/home.screen.dart';
