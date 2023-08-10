@@ -5,36 +5,51 @@ import 'package:gohatch/util.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-void main() => runApp(MaterialApp(home: HealthApp()));
+void main() => runApp(const MaterialApp(home: HealthApp()));
+
+class MyWidget extends StatefulWidget {
+  const MyWidget({super.key});
+
+  @override
+  State<MyWidget> createState() => _MyWidgetState();
+}
+
+class _MyWidgetState extends State<MyWidget> {
+  @override
+  Widget build(BuildContext context) {
+    return const Placeholder();
+  }
+}
 
 class HealthApp extends StatefulWidget {
+  const HealthApp({super.key});
+
   @override
-  _HealthAppState createState() => _HealthAppState();
+  State<HealthApp> createState() => _HealthAppState();
 }
 
 enum AppState {
-  DATA_NOT_FETCHED,
-  FETCHING_DATA,
-  DATA_READY,
-  NO_DATA,
-  AUTHORIZED,
-  AUTH_NOT_GRANTED,
-  DATA_ADDED,
-  DATA_DELETED,
-  DATA_NOT_ADDED,
-  DATA_NOT_DELETED,
-  STEPS_READY,
+  dataNotFetched,
+  fetchingData,
+  dataReady,
+  noData,
+  authorized,
+  authNotGranted,
+  dataAdded,
+  dataDeleted,
+  dataNotAdded,
+  dataNotDeleted,
+  stepsReady,
 }
 
 class _HealthAppState extends State<HealthApp> {
   List<HealthDataPoint> _healthDataList = [];
-  AppState _state = AppState.DATA_NOT_FETCHED;
+  AppState _state = AppState.dataNotFetched;
   int _nofSteps = 0;
 
   static const types = dataTypesAndroid;
 
   final permissions = types.map((e) => HealthDataAccess.READ_WRITE).toList();
-  // final permissions = types.map((e) => HealthDataAccess.READ).toList();
 
   HealthFactory health = HealthFactory();
 
@@ -60,16 +75,17 @@ class _HealthAppState extends State<HealthApp> {
     }
 
     setState(() => _state =
-        (authorized) ? AppState.AUTHORIZED : AppState.AUTH_NOT_GRANTED);
+        (authorized) ? AppState.authorized : AppState.authNotGranted);
   }
 
   /// Fetch data points from the health plugin and show them in the app.
   Future fetchData() async {
-    setState(() => _state = AppState.FETCHING_DATA);
+    setState(() => _state = AppState.fetchingData);
 
     // get data within the last 24 hours
     final now = DateTime.now();
-    final yesterday = now.subtract(const Duration(hours: 24));
+    // final yesterday = now.subtract(const Duration(hours: 24));
+    final lastHour = now.subtract(const Duration(hours: 2));
 
     // Clear old data points
     _healthDataList.clear();
@@ -77,7 +93,7 @@ class _HealthAppState extends State<HealthApp> {
     try {
       // fetch health data
       List<HealthDataPoint> healthData =
-          await health.getHealthDataFromTypes(yesterday, now, types);
+          await health.getHealthDataFromTypes(lastHour, now, types);
       // save all the new data points (only the first 100)
       _healthDataList.addAll(
           (healthData.length < 100) ? healthData : healthData.sublist(0, 100));
@@ -89,11 +105,13 @@ class _HealthAppState extends State<HealthApp> {
     _healthDataList = HealthFactory.removeDuplicates(_healthDataList);
 
     // print the results
-    _healthDataList.forEach((x) => print(x));
+    for (var x in _healthDataList) {
+      print(x);
+    }
 
     // update the UI to display the results
     setState(() {
-      _state = _healthDataList.isEmpty ? AppState.NO_DATA : AppState.DATA_READY;
+      _state = _healthDataList.isEmpty ? AppState.noData : AppState.dataReady;
     });
   }
 
@@ -103,23 +121,13 @@ class _HealthAppState extends State<HealthApp> {
     final earlier = now.subtract(const Duration(minutes: 20));
 
     bool success = true;
-    success &= await health.writeHealthData(
-        1.925, HealthDataType.HEIGHT, earlier, now);
-    success &=
-        await health.writeHealthData(90, HealthDataType.WEIGHT, earlier, now);
-    success &= await health.writeHealthData(
-        90, HealthDataType.HEART_RATE, earlier, now);
     success &=
         await health.writeHealthData(steps, HealthDataType.STEPS, earlier, now);
-    success &= await health.writeWorkoutData(
-        HealthWorkoutActivityType.AMERICAN_FOOTBALL,
-        now.subtract(const Duration(minutes: 15)),
-        now,
-        totalDistance: 2430,
-        totalEnergyBurned: 400);
+    success &= await health.writeHealthData(
+        steps, HealthDataType.DISTANCE_DELTA, earlier, now);
 
     setState(() {
-      _state = success ? AppState.DATA_ADDED : AppState.DATA_NOT_ADDED;
+      _state = success ? AppState.dataAdded : AppState.dataNotAdded;
     });
   }
 
@@ -134,7 +142,7 @@ class _HealthAppState extends State<HealthApp> {
     }
 
     setState(() {
-      _state = success ? AppState.DATA_DELETED : AppState.DATA_NOT_DELETED;
+      _state = success ? AppState.dataDeleted : AppState.dataNotDeleted;
     });
   }
 
@@ -159,11 +167,11 @@ class _HealthAppState extends State<HealthApp> {
 
       setState(() {
         _nofSteps = (steps == null) ? 0 : steps;
-        _state = (steps == null) ? AppState.NO_DATA : AppState.STEPS_READY;
+        _state = (steps == null) ? AppState.noData : AppState.stepsReady;
       });
     } else {
       print("Authorization not granted - error in authorization");
-      setState(() => _state = AppState.DATA_NOT_FETCHED);
+      setState(() => _state = AppState.dataNotFetched);
     }
   }
 
@@ -197,7 +205,7 @@ class _HealthAppState extends State<HealthApp> {
           if (p.value is AudiogramHealthValue) {
             return ListTile(
               title: Text("${p.typeString}: ${p.value}"),
-              trailing: Text('${p.unitString}'),
+              trailing: Text(p.unitString),
               subtitle: Text('${p.dateFrom} - ${p.dateTo}'),
             );
           }
@@ -206,13 +214,13 @@ class _HealthAppState extends State<HealthApp> {
               title: Text(
                   "${p.typeString}: ${(p.value as WorkoutHealthValue).totalEnergyBurned} ${(p.value as WorkoutHealthValue).totalEnergyBurnedUnit?.name}"),
               trailing: Text(
-                  '${(p.value as WorkoutHealthValue).workoutActivityType.name}'),
+                  (p.value as WorkoutHealthValue).workoutActivityType.name),
               subtitle: Text('${p.dateFrom} - ${p.dateTo}'),
             );
           }
           return ListTile(
             title: Text("${p.typeString}: ${p.value}"),
-            trailing: Text('${p.unitString}'),
+            trailing: Text(p.unitString),
             subtitle: Text('${p.dateFrom} - ${p.dateTo}'),
           );
         });
@@ -264,28 +272,29 @@ class _HealthAppState extends State<HealthApp> {
   }
 
   Widget _content() {
-    if (_state == AppState.DATA_READY)
+    if (_state == AppState.dataReady) {
       return _contentDataReady();
-    else if (_state == AppState.NO_DATA)
+    } else if (_state == AppState.noData) {
       return _contentNoData();
-    else if (_state == AppState.FETCHING_DATA)
+    } else if (_state == AppState.fetchingData) {
       return _contentFetchingData();
-    else if (_state == AppState.AUTHORIZED)
+    } else if (_state == AppState.authorized) {
       return _authorized();
-    else if (_state == AppState.AUTH_NOT_GRANTED)
+    } else if (_state == AppState.authNotGranted) {
       return _authorizationNotGranted();
-    else if (_state == AppState.DATA_ADDED)
+    } else if (_state == AppState.dataAdded) {
       return _dataAdded();
-    else if (_state == AppState.DATA_DELETED)
+    } else if (_state == AppState.dataDeleted) {
       return _dataDeleted();
-    else if (_state == AppState.STEPS_READY)
+    } else if (_state == AppState.stepsReady) {
       return _stepsFetched();
-    else if (_state == AppState.DATA_NOT_ADDED)
+    } else if (_state == AppState.dataNotAdded) {
       return _dataNotAdded();
-    else if (_state == AppState.DATA_NOT_DELETED)
+    } else if (_state == AppState.dataNotDeleted) {
       return _dataNotDeleted();
-    else
+    } else {
       return _contentNotFetched();
+    }
   }
 
   @override
@@ -294,80 +303,78 @@ class _HealthAppState extends State<HealthApp> {
       appBar: AppBar(
         title: const Text('Health Example'),
       ),
-      body: Container(
-        child: Column(
-          children: [
-            Wrap(
-              spacing: 10,
-              children: [
-                TextButton(
-                    onPressed: authorize,
-                    style: const ButtonStyle(
-                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
-                    child: const Text("Auth",
-                        style: TextStyle(color: Colors.white))),
-                TextButton(
-                    onPressed: fetchData,
-                    style: const ButtonStyle(
-                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
-                    child: const Text("Fetch Data",
-                        style: TextStyle(color: Colors.white))),
-                TextButton(
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        builder: (context) {
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ListTile(
-                                leading: const Icon(Icons.egg),
-                                title: const Text("2KM"),
-                                onTap: () => addData(steps: 2),
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.egg_outlined),
-                                title: const Text("5KM"),
-                                onTap: () => addData(steps: 5),
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.egg_alt),
-                                title: const Text("7KM"),
-                                onTap: () => addData(steps: 7),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    style: const ButtonStyle(
-                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
-                    child: const Text("Add Data",
-                        style: TextStyle(color: Colors.white))),
-                TextButton(
-                    onPressed: deleteData,
-                    style: const ButtonStyle(
-                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
-                    child: const Text("Delete Data",
-                        style: TextStyle(color: Colors.white))),
-                TextButton(
-                    onPressed: fetchStepData,
-                    style: const ButtonStyle(
-                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
-                    child: const Text("Fetch Step Data",
-                        style: TextStyle(color: Colors.white))),
-                TextButton(
-                    onPressed: revokeAccess,
-                    style: const ButtonStyle(
-                        backgroundColor: MaterialStatePropertyAll(Colors.blue)),
-                    child: const Text("Revoke Access",
-                        style: TextStyle(color: Colors.white))),
-              ],
-            ),
-            const Divider(thickness: 3),
-            Expanded(child: Center(child: _content()))
-          ],
-        ),
+      body: Column(
+        children: [
+          Wrap(
+            spacing: 10,
+            children: [
+              TextButton(
+                  onPressed: authorize,
+                  style: const ButtonStyle(
+                      backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                  child: const Text("Auth",
+                      style: TextStyle(color: Colors.white))),
+              TextButton(
+                  onPressed: fetchData,
+                  style: const ButtonStyle(
+                      backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                  child: const Text("Fetch Data",
+                      style: TextStyle(color: Colors.white))),
+              TextButton(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (context) {
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.egg),
+                              title: const Text("2KM"),
+                              onTap: () => addData(steps: 10),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.egg_outlined),
+                              title: const Text("5KM"),
+                              onTap: () => addData(steps: 5000),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.egg_alt),
+                              title: const Text("7KM"),
+                              onTap: () => addData(steps: 7000),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  style: const ButtonStyle(
+                      backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                  child: const Text("Add Data",
+                      style: TextStyle(color: Colors.white))),
+              TextButton(
+                  onPressed: deleteData,
+                  style: const ButtonStyle(
+                      backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                  child: const Text("Delete Data",
+                      style: TextStyle(color: Colors.white))),
+              TextButton(
+                  onPressed: fetchStepData,
+                  style: const ButtonStyle(
+                      backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                  child: const Text("Fetch Step Data",
+                      style: TextStyle(color: Colors.white))),
+              TextButton(
+                  onPressed: revokeAccess,
+                  style: const ButtonStyle(
+                      backgroundColor: MaterialStatePropertyAll(Colors.blue)),
+                  child: const Text("Revoke Access",
+                      style: TextStyle(color: Colors.white))),
+            ],
+          ),
+          const Divider(thickness: 3),
+          Expanded(child: Center(child: _content()))
+        ],
       ),
     );
   }

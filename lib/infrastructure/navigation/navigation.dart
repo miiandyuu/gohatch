@@ -9,15 +9,15 @@ import 'routes.dart';
 
 class EnvironmentsBadge extends StatelessWidget {
   final Widget child;
-  EnvironmentsBadge({required this.child});
+  const EnvironmentsBadge({super.key, required this.child});
   @override
   Widget build(BuildContext context) {
     var env = ConfigEnvironments.getEnvironments()['env'];
-    return env != Environments.PRODUCTION
+    return env != Environments.production
         ? Banner(
             location: BannerLocation.topStart,
             message: env!,
-            color: env == Environments.QAS ? Colors.blue : Colors.purple,
+            color: env == Environments.qas ? Colors.blue : Colors.purple,
             child: child,
           )
         : SizedBox(child: child);
@@ -27,7 +27,7 @@ class EnvironmentsBadge extends StatelessWidget {
 class Nav {
   static List<GetPage> routes = [
     GetPage(
-      name: Routes.HOME,
+      name: Routes.home,
       page: () => const HomeScreen(),
       binding: HomeControllerBinding(),
     ),
